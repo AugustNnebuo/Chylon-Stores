@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Minus, Trash2, ShoppingBag, Package, Receipt, X, Check, Loader2 } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag, Package, Receipt, X, Check, Loader2, Download } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const COLORS = {
@@ -195,7 +195,7 @@ function SellTab({ products, sales, addSale, notify }) {
       </div>
 
       {selected && (
-        <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-3xl shadow-2xl px-5 pt-5 pb-6" style={{ background: "white", borderTop: `1px solid ${COLORS.line}` }}>
+        <div className="fixed inset-x-0 z-50 rounded-t-3xl shadow-2xl px-5 pt-5" style={{ background: "white", borderTop: `1px solid ${COLORS.line}`, bottom: "78px", paddingBottom: "1.5rem" }}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="font-bold text-lg" style={{ color: COLORS.ink }}>{selected.name}</p>
@@ -362,6 +362,28 @@ function StockTab({ products, addProduct, updateProduct, deleteProduct, notify }
   );
 }
 
+function downloadCSV(rows, rangeLabel) {
+  const headers = ["Date", "Product", "Quantity", "Selling Price", "Cost Price", "Revenue", "Profit"];
+  const csvRows = [headers.join(",")];
+  rows
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .forEach((s) => {
+      const revenue = s.sellingPrice * s.qty;
+      const safeName = `"${s.productName.replace(/"/g, '""')}"`;
+      csvRows.push([s.date, safeName, s.qty, s.sellingPrice, s.costPrice, revenue, s.profit].join(","));
+    });
+  const csvContent = csvRows.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `chylon-sales-${rangeLabel}-${todayISO()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function SummaryTab({ sales, deleteSale }) {
   const [range, setRange] = useState("today");
   const now = new Date();
@@ -417,6 +439,15 @@ function SummaryTab({ sales, deleteSale }) {
         </div>
         <p className="text-center text-xs mt-3 opacity-40">{filtered.length} sale{filtered.length !== 1 ? "s" : ""} logged</p>
       </div>
+
+      <button
+        onClick={() => downloadCSV(filtered, range)}
+        disabled={filtered.length === 0}
+        className="w-full mb-5 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+        style={{ background: COLORS.green, color: COLORS.cream }}
+      >
+        <Download size={16} /> Download CSV ({range === "today" ? "today" : range === "week" ? "7 days" : "this month"})
+      </button>
 
       {top.length > 0 && (
         <>
@@ -500,7 +531,7 @@ export default function App() {
         {tab === "summary" && <SummaryTab sales={sales} deleteSale={deleteSale} />}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto flex z-40" style={{ background: "white", borderTop: `1px solid ${COLORS.line}` }}>
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto flex z-30" style={{ background: "white", borderTop: `1px solid ${COLORS.line}` }}>
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
